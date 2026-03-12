@@ -1,0 +1,6 @@
+@Ecu911.AuthService_HostAddress = http://localhost:5174
+
+GET {{Ecu911.AuthService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Ecu911.AuthService/Ecu911.AuthService.csproj" Id="8ef1a553-e3fb-49a6-8977-820e7e96af52" />
+  <Project Path="Ecu911.CatalogService/Ecu911.CatalogService.csproj" />
+</Solution>
