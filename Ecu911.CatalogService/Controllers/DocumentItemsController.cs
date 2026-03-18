@@ -34,18 +34,16 @@ public class DocumentItemsController : ControllerBase
     {
         var result = await _service.GetByIdAsync(id);
 
-        // Si el documento no existe o está eliminado, lo devolvemos con el mensaje correspondiente.
         if (result == null)
             return NotFound(new { message = "Documento no encontrado." });
 
-        return Ok(result);  // Devuelves el documento, esté o no eliminado
+        return Ok(result);
     }
 
     [Authorize(Roles = "ADMIN,GESTOR_DOCUMENTAL")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateDocumentItemDto input)
     {
-        // Validar que la descripción no esté vacía
         if (string.IsNullOrWhiteSpace(input.Description))
         {
             return BadRequest(new { message = "La descripción es obligatoria." });
@@ -53,7 +51,7 @@ public class DocumentItemsController : ControllerBase
 
         var username = UserContextHelper.GetUsername(User);
         var result = await _service.CreateAsync(input, username);
-        return Ok(result);  // Devuelve el DTO con los datos del nuevo DocumentItem
+        return Ok(result);
     }
 
     [Authorize(Roles = "ADMIN,GESTOR_DOCUMENTAL")]
