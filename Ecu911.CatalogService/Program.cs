@@ -10,6 +10,9 @@ using Microsoft.OpenApi.Models;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Ecu911.CatalogService.Validators;
+using Ecu911.CatalogService.Middlewares;
+using Ecu911.CatalogService.Configuration;
+using Ecu911.CatalogService.Services.FileStorage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +21,8 @@ builder.Services.AddControllers();
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateDocumentItemDtoValidator>();
 builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddScoped<AuditService>();
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -76,9 +81,17 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.Configure<FileStorageOptions>(
+    builder.Configuration.GetSection("FileStorage"));
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+
+builder.Services.AddScoped<IDocumentFileRepository, DocumentFileRepository>();
+builder.Services.AddScoped<IDocumentFileService, DocumentFileService>();
+
 var app = builder.Build();
 
-// Pipeline
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -86,10 +99,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

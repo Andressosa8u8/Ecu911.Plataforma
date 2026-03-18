@@ -12,17 +12,19 @@ namespace Ecu911.CatalogService.Controllers;
 public class DocumentItemsController : ControllerBase
 {
     private readonly IDocumentItemService _service;
+    private readonly IDocumentFileService _documentFileService;
 
-    public DocumentItemsController(IDocumentItemService service)
+    public DocumentItemsController(IDocumentItemService service, IDocumentFileService documentFileService)
     {
         _service = service;
+        _documentFileService = documentFileService;
     }
 
     [Authorize(Roles = "ADMIN,CONSULTA,GESTOR_DOCUMENTAL")]
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll(int pageIndex = 1, int pageSize = 10)
     {
-        var result = await _service.GetAllAsync();
+        var result = await _service.GetAllAsync(pageIndex, pageSize);
         return Ok(result);
     }
 
@@ -78,5 +80,14 @@ public class DocumentItemsController : ControllerBase
             return NotFound(new { message = "Documento no encontrado." });
 
         return Ok(new { message = "Documento marcado como eliminado correctamente." });
+    }
+
+    [Authorize(Roles = "ADMIN,GESTOR_DOCUMENTAL")]
+    [HttpPost("{id:guid}/file")]
+    public async Task<IActionResult> UploadFile(Guid id, IFormFile file, CancellationToken cancellationToken)
+    {
+        var username = UserContextHelper.GetUsername(User);
+        var result = await _documentFileService.UploadAsync(id, file, username, cancellationToken);
+        return Ok(result);
     }
 }

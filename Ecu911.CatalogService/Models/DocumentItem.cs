@@ -17,4 +17,5 @@ public class DocumentItem
 
     public Guid DocumentTypeId { get; set; }
     public DocumentType DocumentType { get; set; } = default!;
+    public DocumentFile? File { get; set; }
 }

@@ -3,6 +3,7 @@ using System;
 using Ecu911.CatalogService.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Ecu911.CatalogService.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260312180444_CreateAuditLogsTable")]
+    partial class CreateAuditLogsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -46,61 +49,6 @@ namespace Ecu911.CatalogService.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("AuditLogs");
-                });
-
-            modelBuilder.Entity("Ecu911.CatalogService.Models.DocumentFile", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("DocumentItemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Extension")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("OriginalFileName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("RelativePath")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<long>("SizeInBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("StoredFileName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UploadedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UploadedBy")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DocumentItemId")
-                        .IsUnique();
-
-                    b.ToTable("DocumentFiles");
                 });
 
             modelBuilder.Entity("Ecu911.CatalogService.Models.DocumentItem", b =>
@@ -173,17 +121,6 @@ namespace Ecu911.CatalogService.Migrations
                     b.ToTable("DocumentTypes");
                 });
 
-            modelBuilder.Entity("Ecu911.CatalogService.Models.DocumentFile", b =>
-                {
-                    b.HasOne("Ecu911.CatalogService.Models.DocumentItem", "DocumentItem")
-                        .WithOne("File")
-                        .HasForeignKey("Ecu911.CatalogService.Models.DocumentFile", "DocumentItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("DocumentItem");
-                });
-
             modelBuilder.Entity("Ecu911.CatalogService.Models.DocumentItem", b =>
                 {
                     b.HasOne("Ecu911.CatalogService.Models.DocumentType", "DocumentType")
@@ -193,11 +130,6 @@ namespace Ecu911.CatalogService.Migrations
                         .IsRequired();
 
                     b.Navigation("DocumentType");
-                });
-
-            modelBuilder.Entity("Ecu911.CatalogService.Models.DocumentItem", b =>
-                {
-                    b.Navigation("File");
                 });
 
             modelBuilder.Entity("Ecu911.CatalogService.Models.DocumentType", b =>

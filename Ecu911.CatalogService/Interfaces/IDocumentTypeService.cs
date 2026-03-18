@@ -5,5 +5,8 @@ namespace Ecu911.CatalogService.Interfaces;
 public interface IDocumentTypeService
 {
     Task<List<DocumentTypeDto>> GetAllAsync();
-    Task<DocumentTypeDto> CreateAsync(CreateDocumentTypeDto input);
+    Task<DocumentTypeDto?> GetByIdAsync(Guid id);
+    Task<DocumentTypeDto> CreateAsync(CreateDocumentTypeDto input, string? username);
+    Task<DocumentTypeDto?> UpdateAsync(Guid id, UpdateDocumentTypeDto input, string? username);
+    Task<bool> DeleteAsync(Guid id, string? username);
 }

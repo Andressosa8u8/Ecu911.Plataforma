@@ -9,4 +9,5 @@ public interface IDocumentItemRepository
     Task<DocumentItem> AddAsync(DocumentItem item);
     Task<DocumentItem?> UpdateAsync(Guid id, string title, string description, Guid documentTypeId, string? username);
     Task<bool> DeleteAsync(Guid id, string? username);
+    Task<bool> ExistsActiveByDocumentTypeIdAsync(Guid documentTypeId);
 }

@@ -34,13 +34,15 @@ namespace Ecu911.CatalogService.Repositories
         {
             _context.DocumentItems.Add(item);
             await _context.SaveChangesAsync();
-            return item;
+
+            return await _context.DocumentItems
+                .Include(x => x.DocumentType)
+                .FirstAsync(x => x.Id == item.Id);
         }
 
         public async Task<DocumentItem?> UpdateAsync(Guid id, string title, string description, Guid documentTypeId, string? username)
         {
             var existing = await _context.DocumentItems
-                .Include(x => x.DocumentType) // Incluimos DocumentType
                 .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
 
             if (existing == null)
@@ -53,7 +55,10 @@ namespace Ecu911.CatalogService.Repositories
             existing.UpdatedBy = username;
 
             await _context.SaveChangesAsync();
-            return existing;
+
+            return await _context.DocumentItems
+                .Include(x => x.DocumentType)
+                .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
         }
 
         public async Task<bool> DeleteAsync(Guid id, string? username)
@@ -70,6 +75,12 @@ namespace Ecu911.CatalogService.Repositories
 
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<bool> ExistsActiveByDocumentTypeIdAsync(Guid documentTypeId)
+        {
+            return await _context.DocumentItems
+                .AnyAsync(x => !x.IsDeleted && x.DocumentTypeId == documentTypeId);
         }
     }
 }

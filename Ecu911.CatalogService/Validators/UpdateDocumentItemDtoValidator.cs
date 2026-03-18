@@ -3,9 +3,9 @@ using FluentValidation;
 
 namespace Ecu911.CatalogService.Validators;
 
-public class CreateDocumentItemDtoValidator : AbstractValidator<CreateDocumentItemDto>
+public class UpdateDocumentItemDtoValidator : AbstractValidator<UpdateDocumentItemDto>
 {
-    public CreateDocumentItemDtoValidator()
+    public UpdateDocumentItemDtoValidator()
     {
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("El título es obligatorio.")
