@@ -1,7 +1,6 @@
 ﻿using Ecu911.CatalogService.DTOs;
 using Ecu911.CatalogService.Interfaces;
 using Ecu911.CatalogService.Models;
-using Ecu911.CatalogService.Services;  // Agregar el servicio de auditoría
 
 namespace Ecu911.CatalogService.Services
 {
@@ -9,15 +8,21 @@ namespace Ecu911.CatalogService.Services
     {
         private readonly IDocumentItemRepository _repository;
         private readonly IDocumentTypeRepository _documentTypeRepository;
+        private readonly IRepositoryNodeRepository _repositoryNodeRepository;
+        private readonly IDocumentFileService _documentFileService;
         private readonly AuditService _auditService;
 
         public DocumentItemService(
             IDocumentItemRepository repository,
             IDocumentTypeRepository documentTypeRepository,
+            IRepositoryNodeRepository repositoryNodeRepository,
+            IDocumentFileService documentFileService,
             AuditService auditService)
         {
             _repository = repository;
             _documentTypeRepository = documentTypeRepository;
+            _repositoryNodeRepository = repositoryNodeRepository;
+            _documentFileService = documentFileService;
             _auditService = auditService;
         }
 
@@ -61,6 +66,10 @@ namespace Ecu911.CatalogService.Services
 
         public async Task<DocumentItemDto> CreateAsync(CreateDocumentItemDto input, string? username)
         {
+            if (string.IsNullOrWhiteSpace(input.Title))
+            {
+                throw new ArgumentException("El título del documento es obligatorio.");
+            }
 
             var documentTypeExists = await _documentTypeRepository.ExistsAsync(input.DocumentTypeId);
 
@@ -69,26 +78,45 @@ namespace Ecu911.CatalogService.Services
                 throw new ArgumentException("El tipo de documento seleccionado no existe o está inactivo.");
             }
 
+            if (input.RepositoryNodeId == Guid.Empty)
+            {
+                throw new ArgumentException("El nodo del repositorio es obligatorio.");
+            }
+
+            var repositoryNodeExists = await _repositoryNodeRepository.ExistsAsync(input.RepositoryNodeId);
+
+            if (!repositoryNodeExists)
+            {
+                throw new ArgumentException("El nodo del repositorio seleccionado no existe o está inactivo.");
+            }
+
             var entity = new DocumentItem
             {
-                Title = input.Title,
-                Description = input.Description,
+                Title = input.Title.Trim(),
+                Description = input.Description?.Trim() ?? string.Empty,
                 DocumentTypeId = input.DocumentTypeId,
+                RepositoryNodeId = input.RepositoryNodeId,
                 CreatedBy = username,
                 CreatedAt = DateTime.UtcNow
             };
 
-            // Guardar en la base de datos
             var created = await _repository.AddAsync(entity);
 
-            // Auditoría
-            _auditService.LogAction("Create", username ?? "Unknown", $"Created DocumentItem with title: {input.Title}");
+            _auditService.LogAction(
+                "Create",
+                username ?? "Unknown",
+                $"Created DocumentItem with title: {entity.Title}");
 
             return MapToDto(created);
         }
 
         public async Task<DocumentItemDto?> UpdateAsync(Guid id, UpdateDocumentItemDto input, string? username)
         {
+            if (string.IsNullOrWhiteSpace(input.Title))
+            {
+                throw new ArgumentException("El título del documento es obligatorio.");
+            }
+
             var documentTypeExists = await _documentTypeRepository.ExistsAsync(input.DocumentTypeId);
 
             if (!documentTypeExists)
@@ -96,11 +124,32 @@ namespace Ecu911.CatalogService.Services
                 throw new ArgumentException("El tipo de documento seleccionado no existe o está inactivo.");
             }
 
-            var updated = await _repository.UpdateAsync(id, input.Title, input.Description, input.DocumentTypeId, username);
+            if (input.RepositoryNodeId == Guid.Empty)
+            {
+                throw new ArgumentException("El nodo del repositorio es obligatorio.");
+            }
+
+            var repositoryNodeExists = await _repositoryNodeRepository.ExistsAsync(input.RepositoryNodeId);
+
+            if (!repositoryNodeExists)
+            {
+                throw new ArgumentException("El nodo del repositorio seleccionado no existe o está inactivo.");
+            }
+
+            var updated = await _repository.UpdateAsync(
+                id,
+                input.Title.Trim(),
+                input.Description?.Trim() ?? string.Empty,
+                input.DocumentTypeId,
+                input.RepositoryNodeId,
+                username);
 
             if (updated != null)
             {
-                _auditService.LogAction("Update", username ?? "Unknown", $"Updated DocumentItem with ID: {id}");
+                _auditService.LogAction(
+                    "Update",
+                    username ?? "Unknown",
+                    $"Updated DocumentItem with ID: {id}");
             }
 
             return updated == null ? null : MapToDto(updated);
@@ -108,12 +157,23 @@ namespace Ecu911.CatalogService.Services
 
         public async Task<bool> DeleteAsync(Guid id, string? username)
         {
+            var existing = await _repository.GetByIdAsync(id);
+
+            if (existing == null)
+            {
+                return false;
+            }
+
+            await _documentFileService.DeleteAsync(id, username);
+
             var deleted = await _repository.DeleteAsync(id, username);
 
             if (deleted)
             {
-                // Auditoría
-                _auditService.LogAction("Delete", username ?? "Unknown", $"Deleted DocumentItem with ID: {id}");
+                _auditService.LogAction(
+                    "Delete",
+                    username ?? "Unknown",
+                    $"Deleted DocumentItem with ID: {id}");
             }
 
             return deleted;
@@ -128,7 +188,9 @@ namespace Ecu911.CatalogService.Services
                 Description = x.Description,
                 CreatedAt = x.CreatedAt,
                 DocumentTypeId = x.DocumentTypeId,
-                DocumentTypeName = x.DocumentType?.Name ?? "Desconocido"
+                DocumentTypeName = x.DocumentType?.Name ?? "Desconocido",
+                RepositoryNodeId = x.RepositoryNodeId,
+                RepositoryNodeName = x.RepositoryNode?.Name
             };
         }
     }

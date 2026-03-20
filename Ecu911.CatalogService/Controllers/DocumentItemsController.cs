@@ -13,11 +13,16 @@ public class DocumentItemsController : ControllerBase
 {
     private readonly IDocumentItemService _service;
     private readonly IDocumentFileService _documentFileService;
+    private readonly IDownloadAuditService _downloadAuditService;
 
-    public DocumentItemsController(IDocumentItemService service, IDocumentFileService documentFileService)
+    public DocumentItemsController(
+        IDocumentItemService service,
+        IDocumentFileService documentFileService,
+        IDownloadAuditService downloadAuditService)
     {
         _service = service;
         _documentFileService = documentFileService;
+        _downloadAuditService = downloadAuditService;
     }
 
     [Authorize(Roles = "ADMIN,CONSULTA,GESTOR_DOCUMENTAL")]
@@ -51,6 +56,7 @@ public class DocumentItemsController : ControllerBase
 
         var username = UserContextHelper.GetUsername(User);
         var result = await _service.CreateAsync(input, username);
+
         return Ok(result);
     }
 
@@ -82,10 +88,62 @@ public class DocumentItemsController : ControllerBase
 
     [Authorize(Roles = "ADMIN,GESTOR_DOCUMENTAL")]
     [HttpPost("{id:guid}/file")]
-    public async Task<IActionResult> UploadFile(Guid id, IFormFile file, CancellationToken cancellationToken)
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadFile(
+        Guid id,
+        IFormFile file,
+        CancellationToken cancellationToken)
     {
         var username = UserContextHelper.GetUsername(User);
         var result = await _documentFileService.UploadAsync(id, file, username, cancellationToken);
+
         return Ok(result);
+    }
+
+    [Authorize(Roles = "ADMIN,CONSULTA,GESTOR_DOCUMENTAL")]
+    [HttpGet("{id:guid}/file")]
+    public async Task<IActionResult> GetFileMetadata(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _documentFileService.GetMetadataAsync(id, cancellationToken);
+
+        if (result == null)
+            return NotFound(new { message = "El archivo del documento no fue encontrado." });
+
+        return Ok(result);
+    }
+
+    [Authorize(Roles = "ADMIN,CONSULTA,GESTOR_DOCUMENTAL")]
+    [HttpGet("{id:guid}/file/download")]
+    public async Task<IActionResult> DownloadFile(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _documentFileService.DownloadAsync(id, cancellationToken);
+
+            if (result == null)
+                return NotFound(new { message = "El archivo del documento no fue encontrado." });
+
+            var username = UserContextHelper.GetUsername(User);
+            await _downloadAuditService.RegisterAsync(id, result.DocumentFileId, username);
+
+            return PhysicalFile(result.AbsolutePath, result.ContentType, result.FileName);
+        }
+        catch (FileNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [Authorize(Roles = "ADMIN,GESTOR_DOCUMENTAL")]
+    [HttpDelete("{id:guid}/file")]
+    public async Task<IActionResult> DeleteFile(Guid id, CancellationToken cancellationToken)
+    {
+        var username = UserContextHelper.GetUsername(User);
+        var deleted = await _documentFileService.DeleteAsync(id, username, cancellationToken);
+
+        if (!deleted)
+            return NotFound(new { message = "El archivo del documento no fue encontrado." });
+
+        return Ok(new { message = "Archivo eliminado correctamente." });
     }
 }

@@ -1,8 +1,8 @@
-﻿using Ecu911.CatalogService.DTOs;
+﻿using Ecu911.CatalogService.Configuration;
+using Ecu911.CatalogService.DTOs;
 using Ecu911.CatalogService.Interfaces;
 using Ecu911.CatalogService.Models;
 using Ecu911.CatalogService.Services.FileStorage;
-using Ecu911.CatalogService.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Ecu911.CatalogService.Services;
@@ -57,20 +57,49 @@ public class DocumentFileService : IDocumentFileService
             throw new ArgumentException($"El archivo supera el tamaño máximo permitido de {_options.MaxFileSizeMB} MB.");
         }
 
-        var existingFile = await _documentFileRepository.GetByDocumentItemIdAsync(documentItemId);
+        // Busca cualquier registro previo, incluso si está eliminado
+        var existingFile = await _documentFileRepository.GetAnyByDocumentItemIdAsync(documentItemId);
 
-        if (existingFile != null)
+        // Si hay un archivo activo previo, se elimina físicamente antes de reemplazarlo
+        if (existingFile != null && !existingFile.IsDeleted && !string.IsNullOrWhiteSpace(existingFile.RelativePath))
         {
             await _fileStorageService.DeleteAsync(existingFile.RelativePath, cancellationToken);
-
-            existingFile.IsDeleted = true;
-            existingFile.DeletedAt = DateTime.UtcNow;
-            existingFile.DeletedBy = username;
-
-            await _documentFileRepository.UpdateAsync(existingFile);
         }
 
         var (storedFileName, storagePath) = await _fileStorageService.SaveAsync(file, cancellationToken);
+
+        if (existingFile != null)
+        {
+            existingFile.OriginalFileName = file.FileName;
+            existingFile.StoredFileName = storedFileName;
+            existingFile.RelativePath = storagePath;
+            existingFile.ContentType = string.IsNullOrWhiteSpace(file.ContentType)
+                ? "application/octet-stream"
+                : file.ContentType;
+            existingFile.Extension = extension;
+            existingFile.SizeInBytes = file.Length;
+            existingFile.UploadedAt = DateTime.UtcNow;
+            existingFile.UploadedBy = username;
+            existingFile.IsDeleted = false;
+            existingFile.DeletedAt = null;
+            existingFile.DeletedBy = null;
+
+            var updated = await _documentFileRepository.UpdateAsync(existingFile);
+
+            _auditService.LogAction("UploadFile", username ?? "Unknown", $"Uploaded file for DocumentItem ID: {documentItemId}");
+
+            return new DocumentFileDto
+            {
+                Id = updated.Id,
+                DocumentItemId = updated.DocumentItemId,
+                OriginalFileName = updated.OriginalFileName,
+                ContentType = updated.ContentType,
+                Extension = updated.Extension,
+                SizeInBytes = updated.SizeInBytes,
+                UploadedAt = updated.UploadedAt,
+                UploadedBy = updated.UploadedBy
+            };
+        }
 
         var entity = new DocumentFile
         {
@@ -78,7 +107,9 @@ public class DocumentFileService : IDocumentFileService
             OriginalFileName = file.FileName,
             StoredFileName = storedFileName,
             RelativePath = storagePath,
-            ContentType = file.ContentType,
+            ContentType = string.IsNullOrWhiteSpace(file.ContentType)
+                ? "application/octet-stream"
+                : file.ContentType,
             Extension = extension,
             SizeInBytes = file.Length,
             UploadedAt = DateTime.UtcNow,
@@ -87,7 +118,7 @@ public class DocumentFileService : IDocumentFileService
 
         var created = await _documentFileRepository.AddAsync(entity);
 
-        _auditService.LogAction("Upload", username ?? "Unknown", $"Uploaded file for DocumentItem ID: {documentItemId}");
+        _auditService.LogAction("UploadFile", username ?? "Unknown", $"Uploaded file for DocumentItem ID: {documentItemId}");
 
         return new DocumentFileDto
         {
@@ -99,6 +130,113 @@ public class DocumentFileService : IDocumentFileService
             SizeInBytes = created.SizeInBytes,
             UploadedAt = created.UploadedAt,
             UploadedBy = created.UploadedBy
+        };
+    }
+
+    public async Task<DocumentFileDto?> GetMetadataAsync(
+        Guid documentItemId,
+        CancellationToken cancellationToken = default)
+    {
+        var documentItem = await _documentItemRepository.GetByIdAsync(documentItemId);
+
+        if (documentItem == null)
+        {
+            return null;
+        }
+
+        var file = await _documentFileRepository.GetByDocumentItemIdAsync(documentItemId);
+
+        if (file == null)
+        {
+            return null;
+        }
+
+        return MapToDto(file);
+    }
+
+    public async Task<DocumentFileDownloadDto?> DownloadAsync(
+    Guid documentItemId,
+    CancellationToken cancellationToken = default)
+    {
+        var documentItem = await _documentItemRepository.GetByIdAsync(documentItemId);
+
+        if (documentItem == null)
+        {
+            return null;
+        }
+
+        var file = await _documentFileRepository.GetByDocumentItemIdAsync(documentItemId);
+
+        if (file == null)
+        {
+            return null;
+        }
+
+        var absolutePath = _fileStorageService.GetAbsolutePath(file.RelativePath);
+
+        if (!File.Exists(absolutePath))
+        {
+            throw new FileNotFoundException("El archivo físico no existe en la ruta configurada.");
+        }
+
+        return new DocumentFileDownloadDto
+        {
+            DocumentFileId = file.Id,
+            AbsolutePath = absolutePath,
+            ContentType = string.IsNullOrWhiteSpace(file.ContentType)
+                ? "application/octet-stream"
+                : file.ContentType,
+            FileName = file.OriginalFileName
+        };
+    }
+
+    public async Task<bool> DeleteAsync(
+        Guid documentItemId,
+        string? username,
+        CancellationToken cancellationToken = default)
+    {
+        var documentItem = await _documentItemRepository.GetByIdAsync(documentItemId);
+
+        if (documentItem == null)
+        {
+            return false;
+        }
+
+        var existingFile = await _documentFileRepository.GetByDocumentItemIdAsync(documentItemId);
+
+        if (existingFile == null)
+        {
+            return false;
+        }
+
+        await _fileStorageService.DeleteAsync(existingFile.RelativePath, cancellationToken);
+
+        existingFile.IsDeleted = true;
+        existingFile.DeletedAt = DateTime.UtcNow;
+        existingFile.DeletedBy = username;
+
+        await _documentFileRepository.UpdateAsync(existingFile);
+
+        _auditService.LogAction(
+            "DeleteFile",
+            username ?? "Unknown",
+            $"Deleted file for DocumentItem ID: {documentItemId}");
+
+        return true;
+    }
+
+    private static DocumentFileDto MapToDto(DocumentFile entity)
+    {
+        return new DocumentFileDto
+        {
+            Id = entity.Id,
+            DocumentItemId = entity.DocumentItemId,
+            OriginalFileName = entity.OriginalFileName,
+            ContentType = entity.ContentType,
+            Extension = entity.Extension,
+            SizeInBytes = entity.SizeInBytes,
+            UploadedAt = entity.UploadedAt,
+            UploadedBy = entity.UploadedBy
         };
     }
 }

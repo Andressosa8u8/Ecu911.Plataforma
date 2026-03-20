@@ -5,6 +5,7 @@ namespace Ecu911.CatalogService.Interfaces;
 public interface IDocumentFileRepository
 {
     Task<DocumentFile?> GetByDocumentItemIdAsync(Guid documentItemId);
+    Task<DocumentFile?> GetAnyByDocumentItemIdAsync(Guid documentItemId);
     Task<DocumentFile> AddAsync(DocumentFile file);
-    Task<DocumentFile?> UpdateAsync(DocumentFile file);
+    Task<DocumentFile> UpdateAsync(DocumentFile file);
 }

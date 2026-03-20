@@ -3,16 +3,17 @@ using Microsoft.EntityFrameworkCore;
 using Ecu911.CatalogService.Repositories;
 using Ecu911.CatalogService.Services;
 using Ecu911.CatalogService.Interfaces;
+using Ecu911.CatalogService.Validators;
+using Ecu911.CatalogService.Middlewares;
+using Ecu911.CatalogService.Configuration;
+using Ecu911.CatalogService.Services.FileStorage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi.Models;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using Ecu911.CatalogService.Validators;
-using Ecu911.CatalogService.Middlewares;
-using Ecu911.CatalogService.Configuration;
-using Ecu911.CatalogService.Services.FileStorage;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -87,6 +88,18 @@ builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
 builder.Services.AddScoped<IDocumentFileRepository, DocumentFileRepository>();
 builder.Services.AddScoped<IDocumentFileService, DocumentFileService>();
+
+builder.Services.AddScoped<IOrganizationalUnitRepository, OrganizationalUnitRepository>();
+builder.Services.AddScoped<IOrganizationalUnitService, OrganizationalUnitService>();
+
+builder.Services.AddScoped<IRepositoryNodeRepository, RepositoryNodeRepository>();
+builder.Services.AddScoped<IRepositoryNodeService, RepositoryNodeService>();
+
+builder.Services.AddScoped<INodePermissionRepository, NodePermissionRepository>();
+builder.Services.AddScoped<INodePermissionService, NodePermissionService>();
+
+builder.Services.AddScoped<IDownloadAuditRepository, DownloadAuditRepository>();
+builder.Services.AddScoped<IDownloadAuditService, DownloadAuditService>();
 
 var app = builder.Build();
 

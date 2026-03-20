@@ -21,4 +21,5 @@ public class DocumentFile
     public bool IsDeleted { get; set; } = false;
     public DateTime? DeletedAt { get; set; }
     public string? DeletedBy { get; set; }
+    public ICollection<DownloadAudit> DownloadAudits { get; set; } = new List<DownloadAudit>();
 }

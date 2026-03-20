@@ -3,6 +3,7 @@ using System;
 using Ecu911.CatalogService.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Ecu911.CatalogService.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260319205846_AddOrganizationalUnits")]
+    partial class AddOrganizationalUnits
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -123,8 +126,7 @@ namespace Ecu911.CatalogService.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
+                        .HasColumnType("text");
 
                     b.Property<Guid>("DocumentTypeId")
                         .HasColumnType("uuid");
@@ -132,13 +134,9 @@ namespace Ecu911.CatalogService.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid?>("RepositoryNodeId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -149,8 +147,6 @@ namespace Ecu911.CatalogService.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DocumentTypeId");
-
-                    b.HasIndex("RepositoryNodeId");
 
                     b.ToTable("DocumentItems");
                 });
@@ -178,91 +174,6 @@ namespace Ecu911.CatalogService.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("DocumentTypes");
-                });
-
-            modelBuilder.Entity("Ecu911.CatalogService.Models.DownloadAudit", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("DocumentFileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("DocumentItemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("DownloadedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DownloadedBy")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DocumentFileId");
-
-                    b.HasIndex("DocumentItemId");
-
-                    b.ToTable("DownloadAudits");
-                });
-
-            modelBuilder.Entity("Ecu911.CatalogService.Models.NodePermission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("CanDelete")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("CanDownload")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("CanManage")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("CanUpload")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("CanView")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("OrganizationalUnitId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("RepositoryNodeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationalUnitId");
-
-                    b.HasIndex("RepositoryNodeId", "OrganizationalUnitId")
-                        .IsUnique();
-
-                    b.ToTable("NodePermissions");
                 });
 
             modelBuilder.Entity("Ecu911.CatalogService.Models.OrganizationalUnit", b =>
@@ -316,71 +227,12 @@ namespace Ecu911.CatalogService.Migrations
                     b.ToTable("OrganizationalUnits");
                 });
 
-            modelBuilder.Entity("Ecu911.CatalogService.Models.RepositoryNode", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Code")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Guid?>("OrganizationalUnitId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ParentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationalUnitId");
-
-                    b.HasIndex("ParentId");
-
-                    b.ToTable("RepositoryNodes");
-                });
-
             modelBuilder.Entity("Ecu911.CatalogService.Models.DocumentFile", b =>
                 {
                     b.HasOne("Ecu911.CatalogService.Models.DocumentItem", "DocumentItem")
-                        .WithOne("DocumentFile")
+                        .WithOne("File")
                         .HasForeignKey("Ecu911.CatalogService.Models.DocumentFile", "DocumentItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("DocumentItem");
@@ -394,91 +246,21 @@ namespace Ecu911.CatalogService.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Ecu911.CatalogService.Models.RepositoryNode", "RepositoryNode")
-                        .WithMany()
-                        .HasForeignKey("RepositoryNodeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("DocumentType");
-
-                    b.Navigation("RepositoryNode");
-                });
-
-            modelBuilder.Entity("Ecu911.CatalogService.Models.DownloadAudit", b =>
-                {
-                    b.HasOne("Ecu911.CatalogService.Models.DocumentFile", "DocumentFile")
-                        .WithMany("DownloadAudits")
-                        .HasForeignKey("DocumentFileId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Ecu911.CatalogService.Models.DocumentItem", "DocumentItem")
-                        .WithMany("DownloadAudits")
-                        .HasForeignKey("DocumentItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("DocumentFile");
-
-                    b.Navigation("DocumentItem");
-                });
-
-            modelBuilder.Entity("Ecu911.CatalogService.Models.NodePermission", b =>
-                {
-                    b.HasOne("Ecu911.CatalogService.Models.OrganizationalUnit", "OrganizationalUnit")
-                        .WithMany()
-                        .HasForeignKey("OrganizationalUnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Ecu911.CatalogService.Models.RepositoryNode", "RepositoryNode")
-                        .WithMany()
-                        .HasForeignKey("RepositoryNodeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("OrganizationalUnit");
-
-                    b.Navigation("RepositoryNode");
                 });
 
             modelBuilder.Entity("Ecu911.CatalogService.Models.OrganizationalUnit", b =>
                 {
                     b.HasOne("Ecu911.CatalogService.Models.OrganizationalUnit", "Parent")
                         .WithMany("Children")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("ParentId");
 
                     b.Navigation("Parent");
-                });
-
-            modelBuilder.Entity("Ecu911.CatalogService.Models.RepositoryNode", b =>
-                {
-                    b.HasOne("Ecu911.CatalogService.Models.OrganizationalUnit", "OrganizationalUnit")
-                        .WithMany()
-                        .HasForeignKey("OrganizationalUnitId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Ecu911.CatalogService.Models.RepositoryNode", "Parent")
-                        .WithMany("Children")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("OrganizationalUnit");
-
-                    b.Navigation("Parent");
-                });
-
-            modelBuilder.Entity("Ecu911.CatalogService.Models.DocumentFile", b =>
-                {
-                    b.Navigation("DownloadAudits");
                 });
 
             modelBuilder.Entity("Ecu911.CatalogService.Models.DocumentItem", b =>
                 {
-                    b.Navigation("DocumentFile");
-
-                    b.Navigation("DownloadAudits");
+                    b.Navigation("File");
                 });
 
             modelBuilder.Entity("Ecu911.CatalogService.Models.DocumentType", b =>
@@ -487,11 +269,6 @@ namespace Ecu911.CatalogService.Migrations
                 });
 
             modelBuilder.Entity("Ecu911.CatalogService.Models.OrganizationalUnit", b =>
-                {
-                    b.Navigation("Children");
-                });
-
-            modelBuilder.Entity("Ecu911.CatalogService.Models.RepositoryNode", b =>
                 {
                     b.Navigation("Children");
                 });
