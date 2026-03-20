@@ -84,6 +84,7 @@ public class RepositoryNodeService : IRepositoryNodeService
             Code = string.IsNullOrWhiteSpace(input.Code) ? null : input.Code.Trim(),
             Description = input.Description?.Trim() ?? string.Empty,
             ParentId = input.ParentId,
+            Module = NormalizeModule(input.Module),
             OrganizationalUnitId = input.OrganizationalUnitId,
             DisplayOrder = input.DisplayOrder,
             CreatedAt = DateTime.UtcNow,
@@ -150,6 +151,7 @@ public class RepositoryNodeService : IRepositoryNodeService
         existing.Code = string.IsNullOrWhiteSpace(input.Code) ? null : input.Code.Trim();
         existing.Description = input.Description?.Trim() ?? string.Empty;
         existing.ParentId = input.ParentId;
+        existing.Module = NormalizeModule(input.Module);
         existing.OrganizationalUnitId = input.OrganizationalUnitId;
         existing.DisplayOrder = input.DisplayOrder;
         existing.UpdatedAt = DateTime.UtcNow;
@@ -203,6 +205,7 @@ public class RepositoryNodeService : IRepositoryNodeService
             Code = x.Code,
             Description = x.Description,
             ParentId = x.ParentId,
+            Module = x.Module,
             ParentName = x.Parent?.Name,
             OrganizationalUnitId = x.OrganizationalUnitId,
             OrganizationalUnitName = x.OrganizationalUnit?.Name,
@@ -210,4 +213,19 @@ public class RepositoryNodeService : IRepositoryNodeService
             CreatedAt = x.CreatedAt
         };
     }
+
+    private static string NormalizeModule(string? module)
+{
+    if (string.IsNullOrWhiteSpace(module))
+        return "REPOSITORIO";
+
+    var normalized = module.Trim().ToUpper();
+
+    if (normalized != "REPOSITORIO" && normalized != "BIBLIOTECA")
+    {
+        throw new ArgumentException("El módulo debe ser REPOSITORIO o BIBLIOTECA.");
+    }
+
+    return normalized;
+}
 }

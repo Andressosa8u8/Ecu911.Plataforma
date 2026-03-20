@@ -8,4 +8,5 @@ public class UpdateRepositoryNodeDto
     public Guid? ParentId { get; set; }
     public Guid? OrganizationalUnitId { get; set; }
     public int DisplayOrder { get; set; } = 0;
+    public string Module { get; set; } = "REPOSITORIO";
 }

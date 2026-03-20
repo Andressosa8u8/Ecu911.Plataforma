@@ -12,4 +12,5 @@ public class RepositoryNodeDto
     public string? OrganizationalUnitName { get; set; }
     public int DisplayOrder { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string Module { get; set; } = default!;
 }

@@ -44,6 +44,12 @@ namespace Ecu911.CatalogService.Data
                 .HasForeignKey(x => x.OrganizationalUnitId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<RepositoryNode>()
+                .Property(x => x.Module)
+                .HasMaxLength(50)
+                .IsRequired()
+                .HasDefaultValue("REPOSITORIO");
+
             modelBuilder.Entity<DocumentItem>()
                 .HasOne(x => x.RepositoryNode)
                 .WithMany()

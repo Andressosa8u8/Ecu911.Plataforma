@@ -12,4 +12,6 @@ public interface INodePermissionRepository
     Task<NodePermission> AddAsync(NodePermission entity);
     Task<NodePermission?> UpdateAsync(NodePermission entity);
     Task<bool> DeleteAsync(Guid id, string? username);
+    Task<NodePermission?> GetByNodeIdAndOrganizationalUnitIdAsync(Guid repositoryNodeId, Guid organizationalUnitId);
+    Task<List<Guid>> GetReadableNodeIdsByOrganizationalUnitIdAsync(Guid organizationalUnitId);
 }

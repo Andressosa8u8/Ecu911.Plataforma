@@ -93,4 +93,27 @@ public class NodePermissionRepository : INodePermissionRepository
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<NodePermission?> GetByNodeIdAndOrganizationalUnitIdAsync(Guid repositoryNodeId, Guid organizationalUnitId)
+    {
+        return await _context.NodePermissions
+            .Include(x => x.RepositoryNode)
+            .Include(x => x.OrganizationalUnit)
+            .FirstOrDefaultAsync(x =>
+                !x.IsDeleted &&
+                x.RepositoryNodeId == repositoryNodeId &&
+                x.OrganizationalUnitId == organizationalUnitId);
+    }
+
+    public async Task<List<Guid>> GetReadableNodeIdsByOrganizationalUnitIdAsync(Guid organizationalUnitId)
+    {
+        return await _context.NodePermissions
+            .Where(x =>
+                !x.IsDeleted &&
+                x.OrganizationalUnitId == organizationalUnitId &&
+                (x.CanView || x.CanManage))
+            .Select(x => x.RepositoryNodeId)
+            .Distinct()
+            .ToListAsync();
+    }
 }

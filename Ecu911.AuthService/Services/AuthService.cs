@@ -42,7 +42,8 @@ public class AuthService : IAuthService
             FullName = input.FullName,
             Email = input.Email,
             PasswordHash = PasswordHelper.HashPassword(input.Password),
-            IsActive = true
+            IsActive = true,
+            OrganizationalUnitId = input.OrganizationalUnitId
         };
 
         var created = await _userRepository.AddAsync(user);
@@ -55,6 +56,7 @@ public class AuthService : IAuthService
             Email = created.Email,
             IsActive = created.IsActive,
             CreatedAt = created.CreatedAt,
+            OrganizationalUnitId = created.OrganizationalUnitId,
             Roles = new List<string>()
         };
     }
@@ -109,6 +111,7 @@ public class AuthService : IAuthService
             Email = x.Email,
             IsActive = x.IsActive,
             CreatedAt = x.CreatedAt,
+            OrganizationalUnitId = x.OrganizationalUnitId,
             Roles = x.UserRoles.Select(ur => ur.Role.Name).ToList()
         }).ToList();
     }
@@ -132,6 +135,11 @@ public class AuthService : IAuthService
             new Claim("fullName", user.FullName),
             new Claim(JwtRegisteredClaimNames.Email, user.Email)
         };
+
+        if (user.OrganizationalUnitId.HasValue)
+        {
+            claims.Add(new Claim("organizationalUnitId", user.OrganizationalUnitId.Value.ToString()));
+        }
 
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
@@ -160,6 +168,7 @@ public class AuthService : IAuthService
                 Email = user.Email,
                 IsActive = user.IsActive,
                 CreatedAt = user.CreatedAt,
+                OrganizationalUnitId = user.OrganizationalUnitId,
                 Roles = roles
             }
         };

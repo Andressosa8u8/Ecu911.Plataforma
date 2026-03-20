@@ -11,22 +11,33 @@ namespace Ecu911.CatalogService.Services
         private readonly IRepositoryNodeRepository _repositoryNodeRepository;
         private readonly IDocumentFileService _documentFileService;
         private readonly AuditService _auditService;
+        private readonly INodeAccessService _nodeAccessService;
+        private readonly IDocumentFileRepository _documentFileRepository;
 
         public DocumentItemService(
             IDocumentItemRepository repository,
             IDocumentTypeRepository documentTypeRepository,
             IRepositoryNodeRepository repositoryNodeRepository,
             IDocumentFileService documentFileService,
-            AuditService auditService)
+            IDocumentFileRepository documentFileRepository,
+            AuditService auditService,
+            INodeAccessService nodeAccessService)
         {
             _repository = repository;
             _documentTypeRepository = documentTypeRepository;
             _repositoryNodeRepository = repositoryNodeRepository;
             _documentFileService = documentFileService;
+            _documentFileRepository = documentFileRepository;
             _auditService = auditService;
+            _nodeAccessService = nodeAccessService;
         }
 
-        public async Task<PagedResultDto<DocumentItemDto>> GetAllAsync(int pageIndex = 1, int pageSize = 10)
+        public async Task<PagedResultDto<DocumentItemDto>> GetAllAsync(
+            DocumentItemFilterDto filter,
+            int pageIndex = 1,
+            int pageSize = 10,
+            bool isAdmin = false,
+            Guid? organizationalUnitId = null)
         {
             if (pageIndex <= 0)
             {
@@ -38,7 +49,65 @@ namespace Ecu911.CatalogService.Services
                 throw new ArgumentException("El tamaño de página debe ser mayor a 0.");
             }
 
+            filter ??= new DocumentItemFilterDto();
+
             var items = await _repository.GetAllAsync();
+
+            if (!isAdmin)
+            {
+                var readableNodeIds = await _nodeAccessService.GetReadableNodeIdsAsync(isAdmin, organizationalUnitId);
+
+                items = items
+                    .Where(x => x.RepositoryNodeId.HasValue && readableNodeIds.Contains(x.RepositoryNodeId.Value))
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Title))
+            {
+                var normalizedTitle = filter.Title.Trim().ToLower();
+
+                items = items
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Title) &&
+                                x.Title.ToLower().Contains(normalizedTitle))
+                    .ToList();
+            }
+
+            if (filter.DocumentTypeId.HasValue)
+            {
+                items = items
+                    .Where(x => x.DocumentTypeId == filter.DocumentTypeId.Value)
+                    .ToList();
+            }
+
+            if (filter.RepositoryNodeId.HasValue)
+            {
+                items = items
+                    .Where(x => x.RepositoryNodeId.HasValue &&
+                                x.RepositoryNodeId.Value == filter.RepositoryNodeId.Value)
+                    .ToList();
+            }
+
+            if (filter.CreatedFrom.HasValue)
+            {
+                var createdFrom = filter.CreatedFrom.Value.Date;
+
+                items = items
+                    .Where(x => x.CreatedAt.Date >= createdFrom)
+                    .ToList();
+            }
+
+            if (filter.CreatedTo.HasValue)
+            {
+                var createdTo = filter.CreatedTo.Value.Date;
+
+                items = items
+                    .Where(x => x.CreatedAt.Date <= createdTo)
+                    .ToList();
+            }
+
+            items = items
+                .OrderByDescending(x => x.CreatedAt)
+                .ToList();
 
             var totalCount = items.Count;
 
@@ -58,13 +127,34 @@ namespace Ecu911.CatalogService.Services
             };
         }
 
-        public async Task<DocumentItemDto?> GetByIdAsync(Guid id)
+        public async Task<DocumentItemDto?> GetByIdAsync(Guid id, bool isAdmin, Guid? organizationalUnitId)
         {
             var item = await _repository.GetByIdAsync(id);
-            return item == null ? null : MapToDto(item);
+
+            if (item == null)
+            {
+                return null;
+            }
+
+            if (!item.RepositoryNodeId.HasValue)
+            {
+                throw new ArgumentException("El documento no tiene un nodo de repositorio asociado.");
+            }
+
+            var canView = await _nodeAccessService.CanViewNodeAsync(
+                item.RepositoryNodeId.Value,
+                isAdmin,
+                organizationalUnitId);
+
+            if (!canView)
+            {
+                throw new UnauthorizedAccessException("No tiene permisos para visualizar este documento.");
+            }
+
+            return MapToDto(item);
         }
 
-        public async Task<DocumentItemDto> CreateAsync(CreateDocumentItemDto input, string? username)
+        public async Task<DocumentItemDto> CreateAsync(CreateDocumentItemDto input, string? username, bool isAdmin, Guid? organizationalUnitId)
         {
             if (string.IsNullOrWhiteSpace(input.Title))
             {
@@ -88,6 +178,13 @@ namespace Ecu911.CatalogService.Services
             if (!repositoryNodeExists)
             {
                 throw new ArgumentException("El nodo del repositorio seleccionado no existe o está inactivo.");
+            }
+
+            var canManage = await _nodeAccessService.CanManageNodeAsync(input.RepositoryNodeId, isAdmin, organizationalUnitId);
+
+            if (!canManage)
+            {
+                throw new UnauthorizedAccessException("No tiene permisos para crear documentos en este nodo.");
             }
 
             var entity = new DocumentItem
@@ -110,7 +207,7 @@ namespace Ecu911.CatalogService.Services
             return MapToDto(created);
         }
 
-        public async Task<DocumentItemDto?> UpdateAsync(Guid id, UpdateDocumentItemDto input, string? username)
+        public async Task<DocumentItemDto?> UpdateAsync(Guid id, UpdateDocumentItemDto input, string? username, bool isAdmin, Guid? organizationalUnitId)
         {
             if (string.IsNullOrWhiteSpace(input.Title))
             {
@@ -136,6 +233,20 @@ namespace Ecu911.CatalogService.Services
                 throw new ArgumentException("El nodo del repositorio seleccionado no existe o está inactivo.");
             }
 
+            var existing = await _repository.GetByIdAsync(id);
+
+            if (existing == null)
+            {
+                return null;
+            }
+
+            var canManageTargetNode = await _nodeAccessService.CanManageNodeAsync(input.RepositoryNodeId, isAdmin, organizationalUnitId);
+
+            if (!canManageTargetNode)
+            {
+                throw new UnauthorizedAccessException("No tiene permisos para editar documentos en este nodo.");
+            }
+
             var updated = await _repository.UpdateAsync(
                 id,
                 input.Title.Trim(),
@@ -155,7 +266,7 @@ namespace Ecu911.CatalogService.Services
             return updated == null ? null : MapToDto(updated);
         }
 
-        public async Task<bool> DeleteAsync(Guid id, string? username)
+        public async Task<bool> DeleteAsync(Guid id, string? username, bool isAdmin, Guid? organizationalUnitId)
         {
             var existing = await _repository.GetByIdAsync(id);
 
@@ -164,7 +275,28 @@ namespace Ecu911.CatalogService.Services
                 return false;
             }
 
-            await _documentFileService.DeleteAsync(id, username);
+            if (!existing.RepositoryNodeId.HasValue)
+            {
+                throw new ArgumentException("El documento no tiene un nodo de repositorio asociado.");
+            }
+
+            var canDelete = await _nodeAccessService.CanDeleteFromNodeAsync(
+                existing.RepositoryNodeId.Value,
+                isAdmin,
+                organizationalUnitId);
+
+            if (!canDelete)
+            {
+                throw new UnauthorizedAccessException("No tiene permisos para eliminar documentos en este nodo.");
+            }
+
+            var existingFile = await _documentFileRepository.GetByDocumentItemIdAsync(id);
+
+            if (existingFile != null)
+            {
+                throw new InvalidOperationException(
+                    "No se puede eliminar el documento porque tiene un archivo adjunto activo. Elimine primero el archivo asociado.");
+            }
 
             var deleted = await _repository.DeleteAsync(id, username);
 

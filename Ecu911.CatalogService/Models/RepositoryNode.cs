@@ -25,6 +25,7 @@ public class RepositoryNode
     public OrganizationalUnit? OrganizationalUnit { get; set; }
 
     public int DisplayOrder { get; set; } = 0;
+    public string Module { get; set; } = "REPOSITORIO";
 
     public bool IsDeleted { get; set; } = false;
 

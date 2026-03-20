@@ -14,28 +14,46 @@ public class DocumentFileService : IDocumentFileService
     private readonly IFileStorageService _fileStorageService;
     private readonly AuditService _auditService;
     private readonly FileStorageOptions _options;
+    private readonly INodeAccessService _nodeAccessService;
 
     public DocumentFileService(
         IDocumentItemRepository documentItemRepository,
         IDocumentFileRepository documentFileRepository,
         IFileStorageService fileStorageService,
         AuditService auditService,
-        IOptions<FileStorageOptions> options)
+        IOptions<FileStorageOptions> options,
+        INodeAccessService nodeAccessService)
     {
         _documentItemRepository = documentItemRepository;
         _documentFileRepository = documentFileRepository;
         _fileStorageService = fileStorageService;
         _auditService = auditService;
         _options = options.Value;
+        _nodeAccessService = nodeAccessService;
     }
 
-    public async Task<DocumentFileDto> UploadAsync(Guid documentItemId, IFormFile file, string? username, CancellationToken cancellationToken = default)
+    public async Task<DocumentFileDto> UploadAsync(Guid documentItemId, IFormFile file, string? username, bool isAdmin, Guid? organizationalUnitId, CancellationToken cancellationToken = default)
     {
         var documentItem = await _documentItemRepository.GetByIdAsync(documentItemId);
 
         if (documentItem == null)
         {
             throw new ArgumentException("El documento no existe o está eliminado.");
+        }
+
+        if (!documentItem.RepositoryNodeId.HasValue)
+        {
+            throw new ArgumentException("El documento no tiene un nodo de repositorio asociado.");
+        }
+
+        var canUpload = await _nodeAccessService.CanUploadToNodeAsync(
+            documentItem.RepositoryNodeId.Value,
+            isAdmin,
+            organizationalUnitId);
+
+        if (!canUpload)
+        {
+            throw new UnauthorizedAccessException("No tiene permisos para subir archivos en este nodo.");
         }
 
         if (file == null || file.Length == 0)
@@ -57,10 +75,8 @@ public class DocumentFileService : IDocumentFileService
             throw new ArgumentException($"El archivo supera el tamaño máximo permitido de {_options.MaxFileSizeMB} MB.");
         }
 
-        // Busca cualquier registro previo, incluso si está eliminado
         var existingFile = await _documentFileRepository.GetAnyByDocumentItemIdAsync(documentItemId);
 
-        // Si hay un archivo activo previo, se elimina físicamente antes de reemplazarlo
         if (existingFile != null && !existingFile.IsDeleted && !string.IsNullOrWhiteSpace(existingFile.RelativePath))
         {
             await _fileStorageService.DeleteAsync(existingFile.RelativePath, cancellationToken);
@@ -134,14 +150,31 @@ public class DocumentFileService : IDocumentFileService
     }
 
     public async Task<DocumentFileDto?> GetMetadataAsync(
-        Guid documentItemId,
-        CancellationToken cancellationToken = default)
+    Guid documentItemId,
+    bool isAdmin,
+    Guid? organizationalUnitId,
+    CancellationToken cancellationToken = default)
     {
         var documentItem = await _documentItemRepository.GetByIdAsync(documentItemId);
 
         if (documentItem == null)
         {
             return null;
+        }
+
+        if (!documentItem.RepositoryNodeId.HasValue)
+        {
+            throw new ArgumentException("El documento no tiene un nodo de repositorio asociado.");
+        }
+
+        var canView = await _nodeAccessService.CanViewNodeAsync(
+            documentItem.RepositoryNodeId.Value,
+            isAdmin,
+            organizationalUnitId);
+
+        if (!canView)
+        {
+            throw new UnauthorizedAccessException("No tiene permisos para visualizar este archivo.");
         }
 
         var file = await _documentFileRepository.GetByDocumentItemIdAsync(documentItemId);
@@ -156,6 +189,8 @@ public class DocumentFileService : IDocumentFileService
 
     public async Task<DocumentFileDownloadDto?> DownloadAsync(
     Guid documentItemId,
+    bool isAdmin,
+    Guid? organizationalUnitId,
     CancellationToken cancellationToken = default)
     {
         var documentItem = await _documentItemRepository.GetByIdAsync(documentItemId);
@@ -163,6 +198,21 @@ public class DocumentFileService : IDocumentFileService
         if (documentItem == null)
         {
             return null;
+        }
+
+        if (!documentItem.RepositoryNodeId.HasValue)
+        {
+            throw new ArgumentException("El documento no tiene un nodo de repositorio asociado.");
+        }
+
+        var canDownload = await _nodeAccessService.CanDownloadFromNodeAsync(
+            documentItem.RepositoryNodeId.Value,
+            isAdmin,
+            organizationalUnitId);
+
+        if (!canDownload)
+        {
+            throw new UnauthorizedAccessException("No tiene permisos para descargar este archivo.");
         }
 
         var file = await _documentFileRepository.GetByDocumentItemIdAsync(documentItemId);
@@ -191,15 +241,32 @@ public class DocumentFileService : IDocumentFileService
     }
 
     public async Task<bool> DeleteAsync(
-        Guid documentItemId,
-        string? username,
-        CancellationToken cancellationToken = default)
+    Guid documentItemId,
+    string? username,
+    bool isAdmin,
+    Guid? organizationalUnitId,
+    CancellationToken cancellationToken = default)
     {
         var documentItem = await _documentItemRepository.GetByIdAsync(documentItemId);
 
         if (documentItem == null)
         {
             return false;
+        }
+
+        if (!documentItem.RepositoryNodeId.HasValue)
+        {
+            throw new ArgumentException("El documento no tiene un nodo de repositorio asociado.");
+        }
+
+        var canDelete = await _nodeAccessService.CanDeleteFromNodeAsync(
+            documentItem.RepositoryNodeId.Value,
+            isAdmin,
+            organizationalUnitId);
+
+        if (!canDelete)
+        {
+            throw new UnauthorizedAccessException("No tiene permisos para eliminar este archivo.");
         }
 
         var existingFile = await _documentFileRepository.GetByDocumentItemIdAsync(documentItemId);

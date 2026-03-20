@@ -101,6 +101,8 @@ builder.Services.AddScoped<INodePermissionService, NodePermissionService>();
 builder.Services.AddScoped<IDownloadAuditRepository, DownloadAuditRepository>();
 builder.Services.AddScoped<IDownloadAuditService, DownloadAuditService>();
 
+builder.Services.AddScoped<INodeAccessService, NodeAccessService>();
+
 var app = builder.Build();
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
