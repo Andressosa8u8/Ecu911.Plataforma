@@ -17,17 +17,32 @@ public class AuthService : IAuthService
     private readonly IRoleRepository _roleRepository;
     private readonly AuthDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly ISystemModuleRepository _systemModuleRepository;
+    private readonly IUserSystemRoleRepository _userSystemRoleRepository;
+    private readonly IPermissionRepository _permissionRepository;
+    private readonly IRolePermissionRepository _rolePermissionRepository;
+    private readonly IUserSystemScopeRepository _userSystemScopeRepository;
 
     public AuthService(
         IUserRepository userRepository,
         IRoleRepository roleRepository,
         AuthDbContext context,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ISystemModuleRepository systemModuleRepository,
+        IUserSystemRoleRepository userSystemRoleRepository,
+        IPermissionRepository permissionRepository,
+        IRolePermissionRepository rolePermissionRepository,
+        IUserSystemScopeRepository userSystemScopeRepository)
     {
         _userRepository = userRepository;
         _roleRepository = roleRepository;
         _context = context;
         _configuration = configuration;
+        _systemModuleRepository = systemModuleRepository;
+        _userSystemRoleRepository = userSystemRoleRepository;
+        _permissionRepository = permissionRepository;
+        _rolePermissionRepository = rolePermissionRepository;
+        _userSystemScopeRepository = userSystemScopeRepository;
     }
 
     public async Task<UserDto> CreateUserAsync(CreateUserDto input)
@@ -112,7 +127,13 @@ public class AuthService : IAuthService
             IsActive = x.IsActive,
             CreatedAt = x.CreatedAt,
             OrganizationalUnitId = x.OrganizationalUnitId,
-            Roles = x.UserRoles.Select(ur => ur.Role.Name).ToList()
+            Roles = x.UserRoles.Select(ur => ur.Role.Name).Distinct().ToList(),
+            Systems = x.UserSystemRoles
+                .Where(usr => usr.SystemModule != null)
+                .Select(usr => usr.SystemModule.Code)
+                .Distinct()
+                .ToList(),
+            CurrentSystem = null
         }).ToList();
     }
 
@@ -172,5 +193,201 @@ public class AuthService : IAuthService
                 Roles = roles
             }
         };
+    }
+
+    public async Task<SystemModuleDto> CreateSystemModuleAsync(CreateSystemModuleDto input)
+    {
+        if (string.IsNullOrWhiteSpace(input.Code))
+            throw new Exception("El código del sistema es obligatorio.");
+
+        if (string.IsNullOrWhiteSpace(input.Name))
+            throw new Exception("El nombre del sistema es obligatorio.");
+
+        var normalizedCode = input.Code.Trim().ToUpperInvariant();
+
+        var existing = await _systemModuleRepository.GetByCodeAsync(normalizedCode);
+        if (existing != null)
+            throw new Exception("Ya existe un sistema con ese código.");
+
+        var entity = new SystemModule
+        {
+            Code = normalizedCode,
+            Name = input.Name.Trim(),
+            Description = string.IsNullOrWhiteSpace(input.Description)
+                ? null
+                : input.Description.Trim(),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var created = await _systemModuleRepository.AddAsync(entity);
+
+        return new SystemModuleDto
+        {
+            Id = created.Id,
+            Code = created.Code,
+            Name = created.Name,
+            Description = created.Description,
+            IsActive = created.IsActive,
+            CreatedAt = created.CreatedAt
+        };
+    }
+
+    public async Task<List<SystemModuleDto>> GetSystemModulesAsync()
+    {
+        var systems = await _systemModuleRepository.GetAllAsync();
+
+        return systems.Select(x => new SystemModuleDto
+        {
+            Id = x.Id,
+            Code = x.Code,
+            Name = x.Name,
+            Description = x.Description,
+            IsActive = x.IsActive,
+            CreatedAt = x.CreatedAt
+        }).ToList();
+    }
+
+    public async Task AssignUserSystemRoleAsync(AssignUserSystemRoleDto input)
+    {
+        var user = await _userRepository.GetByIdAsync(input.UserId);
+        if (user == null)
+            throw new Exception("Usuario no encontrado.");
+
+        var role = await _roleRepository.GetByIdAsync(input.RoleId);
+        if (role == null)
+            throw new Exception("Rol no encontrado.");
+
+        var system = await _systemModuleRepository.GetByIdAsync(input.SystemModuleId);
+        if (system == null || !system.IsActive)
+            throw new Exception("Sistema no encontrado o inactivo.");
+
+        var exists = await _userSystemRoleRepository.ExistsAsync(input.UserId, input.RoleId, input.SystemModuleId);
+        if (exists)
+            throw new Exception("El usuario ya tiene ese rol asignado para ese sistema.");
+
+        await _userSystemRoleRepository.AddAsync(new UserSystemRole
+        {
+            UserId = input.UserId,
+            RoleId = input.RoleId,
+            SystemModuleId = input.SystemModuleId
+        });
+    }
+
+    public async Task<PermissionDto> CreatePermissionAsync(CreatePermissionDto input)
+    {
+        if (string.IsNullOrWhiteSpace(input.Code))
+            throw new Exception("El código del permiso es obligatorio.");
+
+        if (string.IsNullOrWhiteSpace(input.Name))
+            throw new Exception("El nombre del permiso es obligatorio.");
+
+        var normalizedCode = input.Code.Trim().ToUpperInvariant();
+
+        var existing = await _permissionRepository.GetByCodeAsync(normalizedCode);
+        if (existing != null)
+            throw new Exception("Ya existe un permiso con ese código.");
+
+        var entity = new Permission
+        {
+            Code = normalizedCode,
+            Name = input.Name.Trim(),
+            Description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description.Trim(),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var created = await _permissionRepository.AddAsync(entity);
+
+        return new PermissionDto
+        {
+            Id = created.Id,
+            Code = created.Code,
+            Name = created.Name,
+            Description = created.Description,
+            IsActive = created.IsActive,
+            CreatedAt = created.CreatedAt
+        };
+    }
+
+    public async Task<List<PermissionDto>> GetPermissionsAsync()
+    {
+        var permissions = await _permissionRepository.GetAllAsync();
+
+        return permissions.Select(x => new PermissionDto
+        {
+            Id = x.Id,
+            Code = x.Code,
+            Name = x.Name,
+            Description = x.Description,
+            IsActive = x.IsActive,
+            CreatedAt = x.CreatedAt
+        }).ToList();
+    }
+
+    public async Task AssignRolePermissionAsync(AssignRolePermissionDto input)
+    {
+        var role = await _roleRepository.GetByIdAsync(input.RoleId);
+        if (role == null)
+            throw new Exception("Rol no encontrado.");
+
+        var permission = await _permissionRepository.GetByIdAsync(input.PermissionId);
+        if (permission == null || !permission.IsActive)
+            throw new Exception("Permiso no encontrado o inactivo.");
+
+        var exists = await _rolePermissionRepository.ExistsAsync(input.RoleId, input.PermissionId);
+        if (exists)
+            throw new Exception("El rol ya tiene asignado ese permiso.");
+
+        await _rolePermissionRepository.AddAsync(new RolePermission
+        {
+            RoleId = input.RoleId,
+            PermissionId = input.PermissionId
+        });
+    }
+
+    public async Task AssignUserSystemScopeAsync(AssignUserSystemScopeDto input)
+    {
+        var user = await _userRepository.GetByIdAsync(input.UserId);
+        if (user == null)
+            throw new Exception("Usuario no encontrado.");
+
+        var system = await _systemModuleRepository.GetByIdAsync(input.SystemModuleId);
+        if (system == null || !system.IsActive)
+            throw new Exception("Sistema no encontrado o inactivo.");
+
+        if (string.IsNullOrWhiteSpace(input.ScopeLevel))
+            throw new Exception("El nivel de alcance es obligatorio.");
+
+        var normalizedScope = input.ScopeLevel.Trim().ToUpperInvariant();
+
+        var allowed = new[] { "LOCAL", "JURISDICCION", "NACIONAL", "EXTERNO" };
+        if (!allowed.Contains(normalizedScope))
+            throw new Exception("El nivel de alcance no es válido.");
+
+        var existing = await _userSystemScopeRepository.GetByUserAndSystemAsync(input.UserId, input.SystemModuleId);
+
+        if (existing == null)
+        {
+            await _userSystemScopeRepository.AddAsync(new UserSystemScope
+            {
+                UserId = input.UserId,
+                SystemModuleId = input.SystemModuleId,
+                ScopeLevel = normalizedScope,
+                CenterCode = string.IsNullOrWhiteSpace(input.CenterCode) ? null : input.CenterCode.Trim().ToUpperInvariant(),
+                JurisdictionCode = string.IsNullOrWhiteSpace(input.JurisdictionCode) ? null : input.JurisdictionCode.Trim().ToUpperInvariant(),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            return;
+        }
+
+        existing.ScopeLevel = normalizedScope;
+        existing.CenterCode = string.IsNullOrWhiteSpace(input.CenterCode) ? null : input.CenterCode.Trim().ToUpperInvariant();
+        existing.JurisdictionCode = string.IsNullOrWhiteSpace(input.JurisdictionCode) ? null : input.JurisdictionCode.Trim().ToUpperInvariant();
+        existing.IsActive = true;
+
+        await _userSystemScopeRepository.UpdateAsync(existing);
     }
 }

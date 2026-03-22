@@ -10,4 +10,6 @@ public class UserDto
     public DateTime CreatedAt { get; set; }
     public Guid? OrganizationalUnitId { get; set; }
     public List<string> Roles { get; set; } = new();
+    public List<string> Systems { get; set; } = new();
+    public string? CurrentSystem { get; set; }
 }

@@ -18,7 +18,11 @@ public class UserRepository : IUserRepository
     {
         return await _context.Users
             .Include(x => x.UserRoles)
-            .ThenInclude(x => x.Role)
+                .ThenInclude(x => x.Role)
+            .Include(x => x.UserSystemRoles)
+                .ThenInclude(x => x.Role)
+            .Include(x => x.UserSystemRoles)
+                .ThenInclude(x => x.SystemModule)
             .FirstOrDefaultAsync(x => x.Username == username);
     }
 
@@ -34,8 +38,11 @@ public class UserRepository : IUserRepository
     {
         return await _context.Users
             .Include(x => x.UserRoles)
-            .ThenInclude(x => x.Role)
-            .OrderBy(x => x.FullName)
+                .ThenInclude(x => x.Role)
+            .Include(x => x.UserSystemRoles)
+                .ThenInclude(x => x.Role)
+            .Include(x => x.UserSystemRoles)
+                .ThenInclude(x => x.SystemModule)
             .ToListAsync();
     }
 

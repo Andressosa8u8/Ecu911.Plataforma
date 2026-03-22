@@ -3,6 +3,7 @@ using System;
 using Ecu911.AuthService.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Ecu911.AuthService.Migrations
 {
     [DbContext(typeof(AuthDbContext))]
-    partial class AuthDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260320202051_AddSystemModulesAndUserSystemRoles")]
+    partial class AddSystemModulesAndUserSystemRoles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,40 +24,6 @@ namespace Ecu911.AuthService.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("Ecu911.AuthService.Models.Permission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Permissions");
-                });
 
             modelBuilder.Entity("Ecu911.AuthService.Models.Role", b =>
                 {
@@ -76,21 +45,6 @@ namespace Ecu911.AuthService.Migrations
                         .IsUnique();
 
                     b.ToTable("Roles");
-                });
-
-            modelBuilder.Entity("Ecu911.AuthService.Models.RolePermission", b =>
-                {
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("PermissionId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("RoleId", "PermissionId");
-
-                    b.HasIndex("PermissionId");
-
-                    b.ToTable("RolePermissions");
                 });
 
             modelBuilder.Entity("Ecu911.AuthService.Models.SystemModule", b =>
@@ -204,63 +158,6 @@ namespace Ecu911.AuthService.Migrations
                     b.ToTable("UserSystemRoles");
                 });
 
-            modelBuilder.Entity("Ecu911.AuthService.Models.UserSystemScope", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CenterCode")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("JurisdictionCode")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ScopeLevel")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Guid>("SystemModuleId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SystemModuleId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserSystemScopes");
-                });
-
-            modelBuilder.Entity("Ecu911.AuthService.Models.RolePermission", b =>
-                {
-                    b.HasOne("Ecu911.AuthService.Models.Permission", "Permission")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Ecu911.AuthService.Models.Role", "Role")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Permission");
-
-                    b.Navigation("Role");
-                });
-
             modelBuilder.Entity("Ecu911.AuthService.Models.UserRole", b =>
                 {
                     b.HasOne("Ecu911.AuthService.Models.Role", "Role")
@@ -307,34 +204,8 @@ namespace Ecu911.AuthService.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Ecu911.AuthService.Models.UserSystemScope", b =>
-                {
-                    b.HasOne("Ecu911.AuthService.Models.SystemModule", "SystemModule")
-                        .WithMany("UserSystemScopes")
-                        .HasForeignKey("SystemModuleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Ecu911.AuthService.Models.User", "User")
-                        .WithMany("UserSystemScopes")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("SystemModule");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Ecu911.AuthService.Models.Permission", b =>
-                {
-                    b.Navigation("RolePermissions");
-                });
-
             modelBuilder.Entity("Ecu911.AuthService.Models.Role", b =>
                 {
-                    b.Navigation("RolePermissions");
-
                     b.Navigation("UserRoles");
 
                     b.Navigation("UserSystemRoles");
@@ -343,8 +214,6 @@ namespace Ecu911.AuthService.Migrations
             modelBuilder.Entity("Ecu911.AuthService.Models.SystemModule", b =>
                 {
                     b.Navigation("UserSystemRoles");
-
-                    b.Navigation("UserSystemScopes");
                 });
 
             modelBuilder.Entity("Ecu911.AuthService.Models.User", b =>
@@ -352,8 +221,6 @@ namespace Ecu911.AuthService.Migrations
                     b.Navigation("UserRoles");
 
                     b.Navigation("UserSystemRoles");
-
-                    b.Navigation("UserSystemScopes");
                 });
 #pragma warning restore 612, 618
         }

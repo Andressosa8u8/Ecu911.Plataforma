@@ -1,6 +1,60 @@
-@Ecu911.AuthService_HostAddress = http://localhost:5174
+@host = https://localhost:7104
 
-GET {{Ecu911.AuthService_HostAddress}}/weatherforecast/
+### LOGIN ADMIN
+POST {{host}}/api/Auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Admin123*",
+  "systemCode": ""
+}
+
+### CREAR PERMISO VIEW
+POST {{host}}/api/AuthorizationAdmin/permissions
+Content-Type: application/json
+Authorization: Bearer PEGA_AQUI_EL_TOKEN
+
+{
+  "code": "VIEW",
+  "name": "Visualizar",
+  "description": "Permite visualizar información"
+}
+
+### CREAR PERMISO CREATE
+POST {{host}}/api/AuthorizationAdmin/permissions
+Content-Type: application/json
+Authorization: Bearer PEGA_AQUI_EL_TOKEN
+
+{
+  "code": "CREATE",
+  "name": "Crear",
+  "description": "Permite crear registros"
+}
+
+### CREAR PERMISO EDIT
+POST {{host}}/api/AuthorizationAdmin/permissions
+Content-Type: application/json
+Authorization: Bearer PEGA_AQUI_EL_TOKEN
+
+{
+  "code": "EDIT",
+  "name": "Editar",
+  "description": "Permite editar registros"
+}
+
+### CREAR PERMISO DELETE
+POST {{host}}/api/AuthorizationAdmin/permissions
+Content-Type: application/json
+Authorization: Bearer PEGA_AQUI_EL_TOKEN
+
+{
+  "code": "DELETE",
+  "name": "Eliminar",
+  "description": "Permite eliminar registros"
+}
+
+### LISTAR PERMISOS
+GET {{host}}/api/AuthorizationAdmin/permissions
+Authorization: Bearer PEGA_AQUI_EL_TOKEN
 Accept: application/json
-
-###

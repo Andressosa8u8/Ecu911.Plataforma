@@ -10,4 +10,11 @@ public interface IAuthService
     Task AssignRoleAsync(Guid userId, Guid roleId);
     Task<List<UserDto>> GetUsersAsync();
     Task<LoginResponseDto?> LoginAsync(LoginDto input);
+    Task<SystemModuleDto> CreateSystemModuleAsync(CreateSystemModuleDto input);
+    Task<List<SystemModuleDto>> GetSystemModulesAsync();
+    Task AssignUserSystemRoleAsync(AssignUserSystemRoleDto input);
+    Task<PermissionDto> CreatePermissionAsync(CreatePermissionDto input);
+    Task<List<PermissionDto>> GetPermissionsAsync();
+    Task AssignRolePermissionAsync(AssignRolePermissionDto input);
+    Task AssignUserSystemScopeAsync(AssignUserSystemScopeDto input);
 }
